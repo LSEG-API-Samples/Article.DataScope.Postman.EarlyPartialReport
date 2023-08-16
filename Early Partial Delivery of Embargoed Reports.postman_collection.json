@@ -1,0 +1,980 @@
+{
+	"info": {
+		"_postman_id": "454042c4-9659-4cf0-ad28-1100cd302d25",
+		"name": "Early Partial Delivery of Embargoed Reports",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "2058731",
+		"_collection_link": "https://dark-spaceship-134746.postman.co/workspace/DEMO~4e6576a2-eedd-46f8-adc2-a22adec6ce6d/collection/2058731-454042c4-9659-4cf0-ad28-1100cd302d25?action=share&source=collection_link&creator=2058731"
+	},
+	"item": [
+		{
+			"name": "1: Authentication",
+			"item": [
+				{
+					"name": "1: User authentication",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);\r",
+									"if(jsonData.value != undefined) {\r",
+									"   postman.setEnvironmentVariable(\"authorization\", jsonData.value);\r",
+									"} \r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"Credentials\": {\r\n    \"Username\": {{dss-user}},\r\n    \"Password\": {{dss-password}}\r\n  }\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Authentication/RequestToken",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Authentication"
+							],
+							"path": [
+								"RequestToken"
+							]
+						},
+						"description": "Very first query, to request the authentication token (valid 24 hours).\n\nPre-requisites:\n1) Install the DSS REST Postman environment.\n2) Set the \"dss-user\" and \"dss-password\" environment variables to a valid DSS account.\n3) Set the environment variable \"user\" to the same value as \"dss-user\", but without the double quotes.\n\nTo run subsequent requests:\n1) Copy the received token value into the \"authorization\" environment variable."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2: Embargo description",
+			"item": [
+				{
+					"name": "2: Request intraday day embargo description",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"ExtractionRequest\": {\r\n    \"@odata.type\": \"#DataScope.Select.Api.Extractions.ExtractionRequests.IntradayPricingExtractionRequest\",\r\n    \"ContentFieldNames\": [\r\n      \"RIC\",\r\n      \"Current Embargo Delay\",\r\n      \"Embargo Times\",\r\n      \"Embargo Window\",\r\n      \"Exchange Requiring Embargo\",\r\n      \"Instrument Snap Time\",\r\n      \"Last Update Time\",\r\n      \"Maximum Embargo Delay\",\r\n      \"Real Time Permitted\"\r\n    ],\r\n    \"IdentifierList\": {\r\n      \"@odata.type\": \"#DataScope.Select.Api.Extractions.ExtractionRequests.InstrumentIdentifierList\",  \r\n      \"InstrumentIdentifiers\": [\r\n      \t{ \"Identifier\": \"0001.HK\", \"IdentifierType\": \"Ric\" },\r\n      \t{ \"Identifier\": \"IBM.N\", \"IdentifierType\": \"Ric\" },\r\n      \t{ \"Identifier\": \"JPY=\", \"IdentifierType\": \"Ric\" },\r\n      \t{ \"Identifier\": \"1579.T\", \"IdentifierType\": \"Ric\" },\r\n      \t{ \"Identifier\": \"PTT.BK\", \"IdentifierType\": \"Ric\" }\r\n      ]\r\n    },\r\n    \"Condition\": {  }\r\n  }\r\n}\r\n"
+						},
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/ExtractWithNotes",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"ExtractWithNotes"
+							]
+						},
+						"description": "The body of the request contains the field list, instrument list and conditions.\n\nThis request might return data, or timeout (which could be due to an embargo).\n\nIf there was a timeout:\n1) The response status will be 202 (Accepted), and the body will not contain data. Instead, the response header will contain a \"Location\" URL.\n2) Copy that URL into environment variable \"locationUrl\", and then run the next request Tuto-3c, to retrieve the data from that URL.\n\nNote: if the timeout was due to an embargo, the data will only be available at the end of the embargo delay.\n\nTypical embargo durations during trading hours range from 15 minutes to 1 hour; some specific instruments have longer delays, up to 24 hours."
+					},
+					"response": [
+						{
+							"name": "Tuto-3b: Request intraday data",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Prefer",
+										"value": "respond-async"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Token {{authorization}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"ExtractionRequest\": {\r\n    \"@odata.type\": \"#DataScope.Select.Api.Extractions.ExtractionRequests.IntradayPricingExtractionRequest\",\r\n    \"ContentFieldNames\": [\r\n      \"RIC\",\r\n      \"Mid Spread\",\r\n      \"Universal Bid Ask Date\",\r\n      \"Settlement Date\",\r\n      \"Close Mark Mid Spread\",\r\n      \"Last Price\",\r\n      \"Close Yield\",\r\n      \"Trade Date\"\r\n    ],\r\n    \"IdentifierList\": {\r\n      \"@odata.type\": \"#DataScope.Select.Api.Extractions.ExtractionRequests.InstrumentIdentifierList\",\r\n      \"InstrumentIdentifiers\": [\r\n        {\r\n          \"Identifier\": \"TRGV5YUSAC=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"CNGV5YUSAC=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"BRGV5YUSAC=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"ZAGV5YUSAC=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"RUGV5YUSAC=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"CDXEM5Y=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"CDXHY5Y=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"TRY=\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"EURTRY=\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \".DXY\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"EUR=\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"CNH=\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"RUB=\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"BRL=\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"ZAR=\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \".FXJPEMCI\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"TRY1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"COP1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"INR1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"MYR1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"PHP1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"RUB1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"IDR1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"TWD1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"KRW1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"BRL1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"CLP1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"CZK1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"HUF1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"MXN1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"PLN1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"ZAR1MO=R\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"CBTWACF=\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"TRY1WREPO=CBTA\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"TRYONR=CBTA\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"TRYREPOLLLR=CBTA\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"USONFFE=\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"ECBMRO=ECBF\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"RUKEYRATE=CBRF\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"BRTARGET=CBBR\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"ZAREPO=\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"US10YT=RRPS\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"CN2YT=RR\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"RU2YT=RR\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"BR2YT=RR\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"ZA2YT=RR\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"TR2YT=RR\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"TR10YT=RR\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \".XU100\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \".MSCIEF\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \".dMIWO00000PUS\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \".SPX\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \".SSEC\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \".IRTS\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \".BVSP\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \".JTOPI\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \".VIX\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \".TLREF\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"USD1YFSR=X\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"EUR1YFSR=X\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"TRUSAM3L1Y=\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"CLc1\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"LCOc1\",\r\n          \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n          \"Identifier\": \"XAU=\",\r\n          \"IdentifierType\": \"Ric\"\r\n        }\r\n      ],\r\n      \"ValidationOptions\": {\r\n        \"AllowOpenAccessInstruments\": true\r\n      }\r\n    }\r\n  }\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}{{host}}{{api}}Extractions/ExtractWithNotes",
+									"host": [
+										"{{protocol}}{{host}}{{api}}Extractions"
+									],
+									"path": [
+										"ExtractWithNotes"
+									]
+								}
+							},
+							"status": "Accepted",
+							"code": 202,
+							"_postman_previewlanguage": "plain",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "no-cache"
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache"
+								},
+								{
+									"key": "Expires",
+									"value": "-1"
+								},
+								{
+									"key": "Location",
+									"value": "https://selectapi.datascope.refinitiv.com/RestApi/v1/Extractions/ExtractWithNotesResult(ExtractionId='0x079d525c8eccde8a')"
+								},
+								{
+									"key": "Server",
+									"value": "Microsoft-IIS/10.0"
+								},
+								{
+									"key": "BeginRequestTime",
+									"value": "08:45:28.6744871"
+								},
+								{
+									"key": "BeginRequestDate",
+									"value": "2021-07-01"
+								},
+								{
+									"key": "Status",
+									"value": "InProgress"
+								},
+								{
+									"key": "Progress",
+									"value": ""
+								},
+								{
+									"key": "X-Request-Execution-Correlation-Id",
+									"value": "CiD/9008895/AAAAAA.079d525c8edcde8a/RA"
+								},
+								{
+									"key": "X-App-Id",
+									"value": "Custom.RestApi"
+								},
+								{
+									"key": "X-App-Version",
+									"value": "15.0.155.64"
+								},
+								{
+									"key": "CPUUtilization",
+									"value": "1.04643"
+								},
+								{
+									"key": "RequestsPerSec",
+									"value": "0"
+								},
+								{
+									"key": "W3WP-PrivateBytes",
+									"value": "1149296"
+								},
+								{
+									"key": "Date",
+									"value": "Thu, 01 Jul 2021 08:45:58 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "0"
+								}
+							],
+							"cookie": [],
+							"body": null
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "3: User preferences",
+			"item": [
+				{
+					"name": "3.1: Get user preferences",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);\r",
+									"if(jsonData.value[0] != undefined) {\r",
+									"  postman.setEnvironmentVariable(\"preferences\", JSON.stringify(jsonData.value[0]));\r",
+									"} \r",
+									"\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept-Charset",
+								"value": "UTF-8",
+								"disabled": true
+							},
+							{
+								"key": "Accept-Encoding",
+								"value": "gzip",
+								"disabled": true
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}/Users/UserPreferences",
+							"host": [
+								"{{protocol}}{{host}}{{api}}"
+							],
+							"path": [
+								"Users",
+								"UserPreferences"
+							]
+						},
+						"description": "Request data using the job ID.\r\n\r\nPre-requisites:\r\n1) Run Tuto-14a (and probably 14b) to get the \"JobId\".\r\n2) Copy the value of the \"JobId\" from the response body into the \"jobId\" environment variable."
+					},
+					"response": []
+				},
+				{
+					"name": "3.2: Update user preferences",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const body = JSON.parse(postman.getEnvironmentVariable(\"preferences\")); \r",
+									"body.ContentSettings.PartialEmbargoedReportsEnabled = true;\r",
+									"body.ContentSettings.IntermediateReportsEnabled = true;\r",
+									"body.ContentSettings.DeltaReportsEnabled = true;\r",
+									"pm.request.body.raw = JSON.stringify(body)\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept-Charset",
+								"value": "UTF-8",
+								"disabled": true
+							},
+							{
+								"key": "Accept-Encoding",
+								"value": "gzip",
+								"disabled": true
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}/Users/UserPreferences({{user}})",
+							"host": [
+								"{{protocol}}{{host}}{{api}}"
+							],
+							"path": [
+								"Users",
+								"UserPreferences({{user}})"
+							]
+						},
+						"description": "Request data using the job ID.\r\n\r\nPre-requisites:\r\n1) Run Tuto-14a (and probably 14b) to get the \"JobId\".\r\n2) Copy the value of the \"JobId\" from the response body into the \"jobId\" environment variable."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4: Schedule an Immediated Extraction",
+			"item": [
+				{
+					"name": "4.1: Create an empty instrument list",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);\r",
+									"if(jsonData.ListId != undefined) {\r",
+									"   postman.setEnvironmentVariable(\"listId\", jsonData.ListId);\r",
+									"} \r",
+									"\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"@odata.type\": \"#DataScope.Select.Api.Extractions.SubjectLists.InstrumentList\",\r\n  \"Name\": \"EmbargoedTestInstrumentList\"\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/InstrumentLists",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"InstrumentLists"
+							]
+						},
+						"description": "The body of the request contains the instrument list name, which must be unique.\n\nIf a list with the same name already exists, this call will fail.\n\nIf the call succeeded, a ListId is returned.\n\n=> Copy that ListId into environment variable \"listId\"."
+					},
+					"response": []
+				},
+				{
+					"name": "4.2: Append instrumemts to an instrument list",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"Identifiers\": [\r\n        {\r\n            \"Identifier\": \"0001.HK\",\r\n            \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n            \"Identifier\": \"IBM.N\",\r\n            \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n            \"Identifier\": \"JPY=\",\r\n            \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n            \"Identifier\": \"1579.T\",\r\n            \"IdentifierType\": \"Ric\"\r\n        },\r\n        {\r\n            \"Identifier\": \"PTT.BK\",\r\n            \"IdentifierType\": \"Ric\"\r\n        }\r\n    ],\r\n    \"KeepDuplicates\": false\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/InstrumentLists('{{listId}}')/DataScope.Select.Api.Extractions.InstrumentListAppendIdentifiers",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"InstrumentLists('{{listId}}')",
+								"DataScope.Select.Api.Extractions.InstrumentListAppendIdentifiers"
+							]
+						},
+						"description": "The listId returned by the previous call is passed as a parameter in the URL.\n\nThe body of the request contains the instruments to add.\n\nPre-requisites:\n1) Run Tuto-8b: Create an empty instrument list.\n2) Copy the value of the \"ListId\" from the response into the \"listId\" environment variable."
+					},
+					"response": []
+				},
+				{
+					"name": "4.3: Create an intraday pricing report template",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);\r",
+									"if(jsonData.ReportTemplateId != undefined) {\r",
+									"   postman.setEnvironmentVariable(\"reportTemplateId\", jsonData.ReportTemplateId);\r",
+									"} \r",
+									"\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"@odata.type\": \"#DataScope.Select.Api.Extractions.ReportTemplates.IntradayPricingReportTemplate\",\r\n    \"ShowColumnHeaders\": true,\r\n    \"Name\": \"EmbargoedTestIntradayPricingTemplate\",\r\n    \"Headers\": [],\r\n    \"Trailers\": [],\r\n    \"ContentFields\": [\r\n        {\r\n            \"FieldName\": \"RIC\"\r\n        },\r\n        {\r\n            \"FieldName\": \"Last Price\"\r\n        },\r\n        {\r\n            \"FieldName\": \"Last Update Time\"\r\n        },\r\n        {\r\n            \"FieldName\": \"Last Volume\"\r\n        },\r\n        {\r\n            \"FieldName\": \"Bid Price\"\r\n        },\r\n        {\r\n            \"FieldName\": \"Ask Price\"\r\n        },\r\n        {\r\n            \"FieldName\": \"Bid Size\"\r\n        },\r\n        {\r\n            \"FieldName\": \"Ask Size\"\r\n        }\r\n    ],\r\n    \"Condition\": null\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/IntradayPricingReportTemplates",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"IntradayPricingReportTemplates"
+							]
+						},
+						"description": "The body of the request contains, among other parameters, the report template name, which must be unique.\n\nIf a report template with the same name already exists, this call will fail.\n\nIf the call succeeded, a ReportTemplateId is returned.\n\n=> Copy that ReportTemplateId into environment variable \"reportTemplateId\"."
+					},
+					"response": []
+				},
+				{
+					"name": "4.4: Schedule an immediate extraction",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);\r",
+									"if(jsonData.ScheduleId != undefined) {\r",
+									"   postman.setEnvironmentVariable(\"scheduleId\", jsonData.ScheduleId);\r",
+									"} \r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"Name\": \"EmbargoedTestImmediateSchedule\",\r\n  \"Recurrence\": {\r\n    \"@odata.type\": \"#DataScope.Select.Api.Extractions.Schedules.SingleRecurrence\",\r\n    \"IsImmediate\": true\r\n  },\r\n  \"Trigger\": {\r\n    \"@odata.type\": \"#DataScope.Select.Api.Extractions.Schedules.ImmediateTrigger\",\r\n    \"LimitReportToTodaysData\": true\r\n  },\r\n  \"ListId\": \"{{listId}}\",\r\n  \"ReportTemplateId\": \"{{reportTemplateId}}\"\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/Schedules",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"Schedules"
+							]
+						},
+						"description": "The body of the request contains, among other parameters, the listId and reportTemplateId that were returned by the previous calls.\n\nIt also contains the schedule name, which must be unique.\nIf a schedule with the same name already exists, this call will fail.\n\nIf the call succeeded, a ScheduleId is returned.\n\n=> Copy that ScheduleId into environment variable \"scheduleId\".\n\nPre-requisites:\n1) Run the previous steps.\n2) Emsure you have copied the values of the \"ListId\" and ReportTemplateId from the previous responses into the corresponding environment variables."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5: Get a report extraction",
+			"item": [
+				{
+					"name": "5.1: Get a report extraction from the pending extraction",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);\r",
+									"if(jsonData.value[0].ReportExtractionId != undefined) {\r",
+									"   postman.setEnvironmentVariable(\"reportExtractionId\", jsonData.value[0].ReportExtractionId);\r",
+									"} \r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/Schedules('{{scheduleId}}')/PendingExtractions",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"Schedules('{{scheduleId}}')",
+								"PendingExtractions"
+							]
+						},
+						"description": "The schedule Id, which was returned by the previous call, is passed as a parameter in the URL.\n\nDo not proceed further, wait and repeat this call until the returned Status is \"Completed\".\n\n=> Copy the value of the returned ReportExtractionId into environment variable \"reportExtractionId\"."
+					},
+					"response": []
+				},
+				{
+					"name": "5.2: Get a report extraction from the completed extraction",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);\r",
+									"if(jsonData.value[0].ReportExtractionId != undefined) {\r",
+									"   postman.setEnvironmentVariable(\"reportExtractionId\", jsonData.value[0].ReportExtractionId);\r",
+									"} \r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/Schedules('{{scheduleId}}')/CompletedExtractions",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"Schedules('{{scheduleId}}')",
+								"CompletedExtractions"
+							]
+						},
+						"description": "The schedule Id, which was returned by the previous call, is passed as a parameter in the URL.\n\nDo not proceed further, wait and repeat this call until the returned Status is \"Completed\".\n\n=> Copy the value of the returned ReportExtractionId into environment variable \"reportExtractionId\"."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6: Get notes and data files",
+			"item": [
+				{
+					"name": "6.1: Get a notes file",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);\r",
+									"if(jsonData.ExtractedFileId != undefined) {\r",
+									"   postman.setEnvironmentVariable(\"extractedNoteFileId\", jsonData.ExtractedFileId);\r",
+									"} \r",
+									"\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/ReportExtractions('{{reportExtractionId}}')/NotesFile",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"ReportExtractions('{{reportExtractionId}}')",
+								"NotesFile"
+							]
+						},
+						"description": "The schedule Id, which was returned by the previous call, is passed as a parameter in the URL.\n\nDo not proceed further, wait and repeat this call until the returned Status is \"Completed\".\n\n=> Copy the value of the returned ReportExtractionId into environment variable \"reportExtractionId\"."
+					},
+					"response": []
+				},
+				{
+					"name": "6.2: Get all files",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);\r",
+									"\r",
+									"\r",
+									"if(jsonData.value != undefined) {\r",
+									"   for (let i = 0; i < jsonData.value.length; i++) {\r",
+									"    if(jsonData.value[i].FileType == \"Full\" || jsonData.value[i].FileType==\"Partial\"){\r",
+									"        postman.setEnvironmentVariable(\"extractedDataFileId\", jsonData.value[i].ExtractedFileId);\r",
+									"    }\r",
+									"} \r",
+									"} \r",
+									"\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/ReportExtractions('{{reportExtractionId}}')/Files",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"ReportExtractions('{{reportExtractionId}}')",
+								"Files"
+							]
+						},
+						"description": "The schedule Id, which was returned by the previous call, is passed as a parameter in the URL.\n\nDo not proceed further, wait and repeat this call until the returned Status is \"Completed\".\n\n=> Copy the value of the returned ReportExtractionId into environment variable \"reportExtractionId\"."
+					},
+					"response": []
+				},
+				{
+					"name": "6.3: Download a notes file",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/ExtractedFiles('{{extractedNoteFileId}}')/$value",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"ExtractedFiles('{{extractedNoteFileId}}')",
+								"$value"
+							]
+						},
+						"description": "The schedule Id, which was returned by the previous call, is passed as a parameter in the URL.\n\nDo not proceed further, wait and repeat this call until the returned Status is \"Completed\".\n\n=> Copy the value of the returned ReportExtractionId into environment variable \"reportExtractionId\"."
+					},
+					"response": []
+				},
+				{
+					"name": "6.4: Download a data file",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/ExtractedFiles('{{extractedDataFileId}}')/$value",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"ExtractedFiles('{{extractedDataFileId}}')",
+								"$value"
+							]
+						},
+						"description": "The schedule Id, which was returned by the previous call, is passed as a parameter in the URL.\n\nDo not proceed further, wait and repeat this call until the returned Status is \"Completed\".\n\n=> Copy the value of the returned ReportExtractionId into environment variable \"reportExtractionId\"."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7: Clean up",
+			"item": [
+				{
+					"name": "7.1: Delete the extraction schedule",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/Schedules('{{scheduleId}}')",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"Schedules('{{scheduleId}}')"
+							]
+						},
+						"description": "This is to cleanup.\n\nThe schedule Id, which was returned by the Tuto-8e call that scheduled the extraction, is passed as a parameter in the URL."
+					},
+					"response": []
+				},
+				{
+					"name": "7.2: Delete the report template",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/ReportTemplates('{{reportTemplateId}}')",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"ReportTemplates('{{reportTemplateId}}')"
+							]
+						},
+						"description": "This is to cleanup.\n\nThe report template Id, which was returned by the Tuto-8d call that created the report template, is passed as a parameter in the URL."
+					},
+					"response": []
+				},
+				{
+					"name": "7.3: Delete the instrument list",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "respond-async"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}Extractions/InstrumentLists('{{listId}}')",
+							"host": [
+								"{{protocol}}{{host}}{{api}}Extractions"
+							],
+							"path": [
+								"InstrumentLists('{{listId}}')"
+							]
+						},
+						"description": "This is to cleanup.\n\nThe instrument list Id, which was returned by the Tuto-8b call that created the instrument list, is passed as a parameter in the URL."
+					},
+					"response": []
+				},
+				{
+					"name": "7.4: Restore user preferences",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept-Charset",
+								"value": "UTF-8",
+								"disabled": true
+							},
+							{
+								"key": "Accept-Encoding",
+								"value": "gzip",
+								"disabled": true
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{authorization}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{preferences}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{protocol}}{{host}}{{api}}/Users/UserPreferences({{user}})",
+							"host": [
+								"{{protocol}}{{host}}{{api}}"
+							],
+							"path": [
+								"Users",
+								"UserPreferences({{user}})"
+							]
+						},
+						"description": "Request data using the job ID.\r\n\r\nPre-requisites:\r\n1) Run Tuto-14a (and probably 14b) to get the \"JobId\".\r\n2) Copy the value of the \"JobId\" from the response body into the \"jobId\" environment variable."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
