@@ -145,7 +145,7 @@
 								},
 								{
 									"key": "Location",
-									"value": "https://selectapi.datascope.refinitiv.com/RestApi/v1/Extractions/ExtractWithNotesResult(ExtractionId='0x079d525c8eccde8a')"
+									"value": "https://selectapi.datascope.lseg.com/RestApi/v1/Extractions/ExtractWithNotesResult(ExtractionId='0x079d525c8eccde8a')"
 								},
 								{
 									"key": "Server",
